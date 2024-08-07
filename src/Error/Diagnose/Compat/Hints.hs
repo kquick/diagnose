@@ -8,6 +8,9 @@ import Error.Diagnose (Note, Position, Report)
 class HasHints e msg where
   -- | Defines all the hints associated with a given custom error.
   hints :: e -> [Note msg]
+  -- | Allows a custom conversion of a user-specific megaparsec error (the @e@ in
+  -- megaparsec's @Parser e s@) into a Diagnose 'Report'.  A default Report is
+  -- provided in the event that there is no useful customization.
   mkReports :: [Report msg] -> Position -> e -> [Report msg]
 
   hints = const mempty

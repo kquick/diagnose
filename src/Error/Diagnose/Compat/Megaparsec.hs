@@ -33,6 +33,11 @@ import Error.Diagnose.Compat.Hints (HasHints (..))
 import qualified Text.Megaparsec as MP
 
 -- | Transforms a megaparsec 'MP.ParseErrorBundle' into a well-formated 'Diagnostic' ready to be shown.
+--
+-- This may be accompanied by providing a specific instance of 'HasHints' for the
+-- specific user error type used with megaparsec (i.e. the @e@ in @Parser e s@).
+-- If no specific instance is provided, a default error report with no hints is
+-- generated.
 diagnosticFromBundle ::
   forall msg s e.
   (IsString msg, MP.Stream s, HasHints e msg, MP.ShowErrorComponent e, MP.VisualStream s, MP.TraversableStream s) =>
