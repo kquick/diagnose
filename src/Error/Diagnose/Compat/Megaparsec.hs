@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -47,20 +48,27 @@ diagnosticFromBundle ::
   MP.ParseErrorBundle s e ->
   Diagnostic msg
 diagnosticFromBundle isError code msg (fromMaybe [] -> trivialHints) MP.ParseErrorBundle {..} =
-  foldl addReport mempty (toLabeledPosition <$> bundleErrors)
+  foldl addReport mempty $ concat (toLabeledPosition <$> bundleErrors)
   where
-    toLabeledPosition :: MP.ParseError s e -> Report msg
+    toLabeledPosition :: MP.ParseError s e -> [Report msg]
     toLabeledPosition error =
       let (_, pos) = MP.reachOffset (MP.errorOffset error) bundlePosState
           source = fromSourcePos (MP.pstateSourcePos pos)
           msgs = fromString @msg <$> lines (MP.parseErrorTextPretty error)
-       in flip
+          errRep = flip
             (if isError error then Err code msg else Warn code msg)
             (errorHints error)
             if
                 | [m] <- msgs -> [(source, This m)]
                 | [m1, m2] <- msgs -> [(source, This m1), (source, Where m2)]
                 | otherwise -> [(source, This $ fromString "<<Unknown error>>")]
+      in case error of
+        MP.TrivialError {} -> [errRep]
+        MP.FancyError _ errs ->
+          let mkRep = \case
+                MP.ErrorCustom ce -> mkReports [errRep] source ce
+                _ -> [errRep]
+          in concat $ mkRep <$> Set.toList errs
 
     fromSourcePos :: MP.SourcePos -> Position
     fromSourcePos MP.SourcePos {..} =
